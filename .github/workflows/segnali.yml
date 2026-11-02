@@ -1,0 +1,32 @@
+name: Segnalatore serale
+
+on:
+  schedule:
+    # Lun-Ven alle 22:37 UTC (23:37 in Italia d'inverno), dopo la chiusura di Wall Street
+    - cron: "37 22 * * 1-5"
+  workflow_dispatch:   # pulsante "Run workflow" per provarlo a mano
+
+permissions:
+  contents: write      # serve per salvare stato.json, letto dall'app
+
+jobs:
+  controlla:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python segnalatore.py
+        env:
+          EXPO_PUSH_TOKEN: ${{ secrets.EXPO_PUSH_TOKEN }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+      - name: Salva stato.json
+        if: always()
+        run: |
+          git config user.name "segnalatore"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add stato.json
+          git diff --cached --quiet || (git commit -m "Stato $(date -u +%F)" && git push)
