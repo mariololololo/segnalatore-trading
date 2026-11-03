@@ -1,0 +1,20 @@
+{
+  "aggiornato": "2026-11-03T03:42:34+00:00",
+  "ticker": "SPY",
+  "data": "2026-11-02",
+  "prezzo": 752.1,
+  "media_veloce": 769.33,
+  "media_lenta": 766.54,
+  "giorni_veloce": 20,
+  "giorni_lenta": 50,
+  "in_posizione": true,
+  "data_acquisto": "2026-04-23",
+  "prezzo_acquisto": 704.88,
+  "stop_loss": 676.68,
+  "rendimento_aperto": 0.067,
+  "ultimo_segnale": {
+    "tipo": "ACQUISTO",
+    "data": "2026-04-23",
+    "prezzo": 704.88
+  }
+}
