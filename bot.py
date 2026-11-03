@@ -28,7 +28,7 @@ from strategia import (FILTRO_200, MEDIA_LENTA, MEDIA_VELOCE, STOP_LOSS, TICKER,
 
 # ---- Sicurezza ----
 ALPACA_URL = "https://paper-api.alpaca.markets"   # SOLO conto paper, mai live
-QUOTA_CONTO = 0.25    # usa il 25% del capitale per operazione → rischio ≈ 1% con stop al 4%
+QUOTA_CONTO = 0.95    # investe il 95% del capitale a ogni segnale (con stop al 4% rischia ≈ 3,8%)
 
 FILE_STATO = Path(__file__).with_name("stato.json")
 PROVA = os.getenv("PROVA") == "1"
@@ -61,9 +61,10 @@ class Alpaca:
     def ordini_aperti(self, simbolo: str) -> list:
         return self._req("GET", "/v2/orders", params={"status": "open", "symbols": simbolo}) or []
 
-    def compra(self, simbolo: str, quantita: int) -> dict:
+    def compra(self, simbolo: str, importo: float) -> dict:
+        """Ordine in dollari: permette di comprare frazioni di azione."""
         return self._req("POST", "/v2/orders", json={
-            "symbol": simbolo, "qty": str(quantita), "side": "buy",
+            "symbol": simbolo, "notional": f"{importo:.2f}", "side": "buy",
             "type": "market", "time_in_force": "day"})
 
     def vendi_tutto(self, simbolo: str) -> dict:
@@ -86,7 +87,7 @@ def costruisci_storico(api: Alpaca) -> tuple[list, list]:
             continue
         prezzo, qta = float(o["filled_avg_price"]), float(o["filled_qty"])
         op = {"tipo": "ACQUISTO" if o["side"] == "buy" else "VENDITA",
-              "data": o["filled_at"][:10], "quantita": qta, "prezzo": round(prezzo, 2)}
+              "data": o["filled_at"][:10], "quantita": round(qta, 3), "prezzo": round(prezzo, 2)}
         if o["side"] == "buy":
             ultimo_acquisto = prezzo
         elif ultimo_acquisto:
@@ -140,13 +141,14 @@ def main() -> None:
         print(f"C'è già un ordine in attesa ({len(in_attesa)}): non faccio nulla.")
     elif pos is None:
         if seg.incrocio_su and seg.trend_ok:
-            quantita = math.floor(capitale * QUOTA_CONTO / prezzo)
-            if quantita < 1:
-                print("Capitale insufficiente per 1 azione.")
+            importo = math.floor(capitale * QUOTA_CONTO * 100) / 100
+            quantita = round(importo / prezzo, 3)
+            if importo < 1:
+                print("Capitale insufficiente.")
             else:
                 azione = ("ACQUISTO", quantita, None)
                 if not PROVA:
-                    api.compra(TICKER, quantita)
+                    api.compra(TICKER, importo)
     else:
         entrata = float(pos["avg_entry_price"])
         if prezzo <= entrata * (1 - STOP_LOSS):
@@ -156,7 +158,7 @@ def main() -> None:
         else:
             motivo = None
         if motivo:
-            azione = ("VENDITA", int(float(pos["qty"])), motivo)
+            azione = ("VENDITA", round(float(pos["qty"]), 3), motivo)
             if not PROVA:
                 api.vendi_tutto(TICKER)
 
@@ -182,7 +184,7 @@ def main() -> None:
     if pos:
         entrata = float(pos["avg_entry_price"])
         stato |= {
-            "quantita": float(pos["qty"]),
+            "quantita": round(float(pos["qty"]), 3),
             "prezzo_acquisto": round(entrata, 2),
             "stop_loss": round(entrata * (1 - STOP_LOSS), 2),
             "rendimento_aperto": round(prezzo / entrata - 1, 4),
@@ -205,7 +207,7 @@ def main() -> None:
     if azione:
         tipo, quantita, motivo = azione
         if tipo == "ACQUISTO":
-            invia(f"🟢 Bot: compro {quantita} {TICKER}",
+            invia(f"🟢 Bot: compro {quantita} {TICKER} (~{quantita * prezzo:,.0f} $)",
                   f"Media {MEDIA_VELOCE} sopra media {MEDIA_LENTA} (chiusura {giorno}, {prezzo:.2f} $). "
                   f"Ordine in coda, eseguito all'apertura di domani. "
                   f"Stop-loss circa {prezzo * (1 - STOP_LOSS):.2f} $.", urgente=True)
