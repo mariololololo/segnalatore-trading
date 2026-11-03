@@ -9,10 +9,5 @@
   "giorni_lenta": 20,
   "filtro_200": false,
   "capitale": 100000.0,
-  "in_posizione": false,
-  "ultimo_segnale": {
-    "tipo": "ACQUISTO",
-    "data": "2026-04-23",
-    "prezzo": 704.88
-  }
+  "in_posizione": false
 }
