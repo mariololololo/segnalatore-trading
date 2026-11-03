@@ -69,6 +69,45 @@ class Alpaca:
     def vendi_tutto(self, simbolo: str) -> dict:
         return self._req("DELETE", f"/v2/positions/{simbolo}")
 
+    def ordini_eseguiti(self, simbolo: str) -> list:
+        return self._req("GET", "/v2/orders", params={
+            "status": "closed", "symbols": simbolo, "limit": 200, "direction": "asc"}) or []
+
+    def storico_capitale(self) -> dict:
+        return self._req("GET", "/v2/account/portfolio/history",
+                         params={"period": "1A", "timeframe": "1D"}) or {}
+
+
+def costruisci_storico(api: Alpaca) -> tuple[list, list]:
+    """Operazioni eseguite (con risultato delle vendite) e capitale giorno per giorno."""
+    operazioni, ultimo_acquisto = [], None
+    for o in api.ordini_eseguiti(TICKER):
+        if o.get("status") != "filled" or not o.get("filled_avg_price"):
+            continue
+        prezzo, qta = float(o["filled_avg_price"]), float(o["filled_qty"])
+        op = {"tipo": "ACQUISTO" if o["side"] == "buy" else "VENDITA",
+              "data": o["filled_at"][:10], "quantita": qta, "prezzo": round(prezzo, 2)}
+        if o["side"] == "buy":
+            ultimo_acquisto = prezzo
+        elif ultimo_acquisto:
+            op["risultato_pct"] = round(prezzo / ultimo_acquisto - 1, 4)
+            op["risultato_usd"] = round((prezzo - ultimo_acquisto) * qta, 2)
+            ultimo_acquisto = None
+        operazioni.append(op)
+
+    capitale = []
+    try:
+        st = api.storico_capitale()
+        for ts, eq in zip(st.get("timestamp") or [], st.get("equity") or []):
+            if eq is None:
+                continue
+            ts = ts / 1000 if ts > 10**11 else ts      # secondi o millisecondi
+            giorno = datetime.fromtimestamp(ts, timezone.utc).date().isoformat()
+            capitale.append({"data": giorno, "valore": round(float(eq), 2)})
+    except (RuntimeError, ValueError, TypeError) as e:
+        print(f"⚠️ Storico capitale non disponibile: {e}")
+    return operazioni[-50:], capitale
+
 
 def leggi_stato_precedente() -> dict:
     try:
@@ -152,6 +191,11 @@ def main() -> None:
         }
     if ultimo_segnale:
         stato["ultimo_segnale"] = ultimo_segnale
+    operazioni, storico = costruisci_storico(api)
+    stato["capitale_iniziale"] = precedente.get("capitale_iniziale") or (
+        storico[0]["valore"] if storico else round(capitale, 2))
+    stato["storico_capitale"] = storico
+    stato["operazioni"] = operazioni
     if not PROVA:
         FILE_STATO.write_text(json.dumps(stato, indent=2, ensure_ascii=False) + "\n")
     else:
