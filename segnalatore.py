@@ -32,11 +32,15 @@ def invia(titolo: str, testo: str, urgente: bool = False) -> None:
                    "priority": "high" if urgente else "default"} for t in token],
             timeout=20,
         )
-        r.raise_for_status()
-        for ticket in r.json().get("data", []):
-            if ticket.get("status") != "ok":
-                raise RuntimeError(f"Errore push Expo: {ticket}")
-        inviato = True
+        try:
+            r.raise_for_status()
+            errori = [t for t in r.json().get("data", []) if t.get("status") != "ok"]
+        except (requests.RequestException, ValueError) as e:
+            errori = [str(e)]
+        if errori:
+            print(f"⚠️ Notifica Expo non inviata: {errori}")
+        else:
+            inviato = True
 
     ntfy = os.getenv("NTFY_TOPIC")
     if ntfy:
@@ -47,7 +51,7 @@ def invia(titolo: str, testo: str, urgente: bool = False) -> None:
         inviato = True
 
     if not inviato:
-        print(f"(Notifica non inviata: manca il secret EXPO_PUSH_TOKEN) {titolo} — {testo}")
+        print(f"(Notifica non inviata: controlla il secret EXPO_PUSH_TOKEN) {titolo} — {testo}")
         return
     print(f"Inviato: {titolo}")
 
