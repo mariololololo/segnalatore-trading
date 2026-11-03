@@ -121,29 +121,10 @@ def main() -> None:
             if not PROVA:
                 api.vendi_tutto(TICKER)
 
-    # ---- Notifica ----
     if azione:
-        tipo, quantita, motivo = azione
-        ultimo_segnale = {"tipo": tipo, "data": data.date().isoformat(), "prezzo": round(prezzo, 2)}
-        if tipo == "ACQUISTO":
-            invia(f"🟢 Bot: compro {quantita} {TICKER}",
-                  f"Media {MEDIA_VELOCE} sopra media {MEDIA_LENTA} (chiusura {giorno}, {prezzo:.2f} $). "
-                  f"Ordine in coda, eseguito all'apertura di domani. "
-                  f"Stop-loss circa {prezzo * (1 - STOP_LOSS):.2f} $.", urgente=True)
-        else:
-            entrata = float(pos["avg_entry_price"])
-            ultimo_segnale["motivo"] = motivo
-            invia(f"🔴 Bot: vendo {quantita} {TICKER}",
-                  f"{motivo} (chiusura {giorno}, {prezzo:.2f} $). Acquisto a {entrata:.2f} $: "
-                  f"circa {prezzo / entrata - 1:+.2%}. Ordine eseguito all'apertura di domani.",
-                  urgente=True)
-    elif data.weekday() == 0 or PROVA:
-        if pos:
-            stato = (f"Ho {pos['qty']} {TICKER} ({float(pos['unrealized_plpc']):+.2%}). "
-                     f"Capitale {capitale:,.0f} $.")
-        else:
-            stato = f"Nessuna posizione, aspetto il prossimo segnale. Capitale {capitale:,.0f} $."
-        invia(f"Bot {TICKER} · nessuna operazione", stato)
+        ultimo_segnale = {"tipo": azione[0], "data": data.date().isoformat(), "prezzo": round(prezzo, 2)}
+        if azione[2]:
+            ultimo_segnale["motivo"] = azione[2]
 
     # ---- stato.json per l'app ----
     stato = {
@@ -175,6 +156,28 @@ def main() -> None:
         FILE_STATO.write_text(json.dumps(stato, indent=2, ensure_ascii=False) + "\n")
     else:
         print(json.dumps(stato, indent=2, ensure_ascii=False))
+
+    # ---- Notifica ----
+    if azione:
+        tipo, quantita, motivo = azione
+        if tipo == "ACQUISTO":
+            invia(f"🟢 Bot: compro {quantita} {TICKER}",
+                  f"Media {MEDIA_VELOCE} sopra media {MEDIA_LENTA} (chiusura {giorno}, {prezzo:.2f} $). "
+                  f"Ordine in coda, eseguito all'apertura di domani. "
+                  f"Stop-loss circa {prezzo * (1 - STOP_LOSS):.2f} $.", urgente=True)
+        else:
+            entrata = float(pos["avg_entry_price"])
+            invia(f"🔴 Bot: vendo {quantita} {TICKER}",
+                  f"{motivo} (chiusura {giorno}, {prezzo:.2f} $). Acquisto a {entrata:.2f} $: "
+                  f"circa {prezzo / entrata - 1:+.2%}. Ordine eseguito all'apertura di domani.",
+                  urgente=True)
+    elif data.weekday() == 0 or PROVA:
+        if pos:
+            stato = (f"Ho {pos['qty']} {TICKER} ({float(pos['unrealized_plpc']):+.2%}). "
+                     f"Capitale {capitale:,.0f} $.")
+        else:
+            stato = f"Nessuna posizione, aspetto il prossimo segnale. Capitale {capitale:,.0f} $."
+        invia(f"Bot {TICKER} · nessuna operazione", stato)
 
 
 if __name__ == "__main__":

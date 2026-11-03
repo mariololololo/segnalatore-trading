@@ -47,7 +47,8 @@ def invia(titolo: str, testo: str, urgente: bool = False) -> None:
         inviato = True
 
     if not inviato:
-        raise SystemExit("Nessun destinatario: imposta il secret EXPO_PUSH_TOKEN su GitHub.")
+        print(f"(Notifica non inviata: manca il secret EXPO_PUSH_TOKEN) {titolo} — {testo}")
+        return
     print(f"Inviato: {titolo}")
 
 
