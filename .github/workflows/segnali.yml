@@ -1,4 +1,4 @@
-name: Segnalatore serale
+name: Bot serale
 
 on:
   schedule:
@@ -19,8 +19,10 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - run: python segnalatore.py
+      - run: python bot.py
         env:
+          ALPACA_KEY: ${{ secrets.ALPACA_KEY }}
+          ALPACA_SECRET: ${{ secrets.ALPACA_SECRET }}
           EXPO_PUSH_TOKEN: ${{ secrets.EXPO_PUSH_TOKEN }}
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
       - name: Salva stato.json

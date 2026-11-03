@@ -1,4 +1,17 @@
-# Segnalatore trading (solo paper trading)
+# Bot trading (solo conto PAPER Alpaca)
+
+`bot.py` gira ogni sera su GitHub Actions: legge i prezzi dello SPY, decide con le regole
+di `strategia.py` (medie 5/20 + stop-loss 4%) e piazza da solo gli ordini sul conto
+**paper** di Alpaca (Secrets `ALPACA_KEY` e `ALPACA_SECRET`). Usa il 25% del capitale
+a operazione. Le chiavi devono iniziare con `PK`, altrimenti il bot si ferma.
+
+Per provarlo senza ordini: `$env:PROVA=1; python bot.py` (servono le chiavi come variabili d'ambiente).
+
+Confronto strategie: `python confronta.py`.
+
+---
+
+## Versione precedente: segnalatore
 
 Ogni sera, dal lunedì al venerdì, dopo la chiusura di Wall Street, controlla lo **SPY**
 con la strategia "incrocio medie mobili 20/50 + stop-loss 4%", aggiorna `stato.json`

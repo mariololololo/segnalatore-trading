@@ -9,9 +9,10 @@ import pandas as pd
 
 # ---- Parametri (modificabili) ----
 TICKER = "SPY"          # ETF S&P 500 in dollari
-MEDIA_VELOCE = 20       # giorni
-MEDIA_LENTA = 50        # giorni
+MEDIA_VELOCE = 5        # giorni (strategia "veloce", la migliore nel confronto 2016-2026)
+MEDIA_LENTA = 20        # giorni
 STOP_LOSS = 0.04        # 4% sotto il prezzo di acquisto
+FILTRO_200 = False      # True = compra solo se il prezzo è sopra la media a 200 giorni
 
 
 @dataclass
@@ -53,21 +54,33 @@ def scarica_prezzi(ticker: str = TICKER, anni: int = 10) -> pd.Series:
     return chiusure.dropna()
 
 
+def segnali_giorno(chiusure: pd.Series, veloce: int = MEDIA_VELOCE,
+                   lenta: int = MEDIA_LENTA, filtro_200: bool = FILTRO_200) -> pd.DataFrame:
+    """Per ogni giorno: incrocio al rialzo/ribasso e se il filtro di lungo periodo è ok."""
+    sopra = chiusure.rolling(veloce).mean() > chiusure.rolling(lenta).mean()
+    prima = sopra.shift(1, fill_value=False)
+    trend_ok = (chiusure > chiusure.rolling(200).mean()) if filtro_200 else pd.Series(True, index=chiusure.index)
+    return pd.DataFrame({
+        "incrocio_su": sopra & ~prima,
+        "incrocio_giu": ~sopra & prima,
+        "trend_ok": trend_ok,
+    })
+
+
 def applica_strategia(chiusure: pd.Series,
                       veloce: int = MEDIA_VELOCE,
                       lenta: int = MEDIA_LENTA,
-                      stop: float = STOP_LOSS) -> Risultato:
+                      stop: float = STOP_LOSS,
+                      filtro_200: bool = FILTRO_200) -> Risultato:
     """Ripercorre i prezzi giorno per giorno applicando le regole."""
-    sma_v = chiusure.rolling(veloce).mean()
-    sma_l = chiusure.rolling(lenta).mean()
-    sopra = sma_v > sma_l
+    seg = segnali_giorno(chiusure, veloce, lenta, filtro_200)
 
     ris = Risultato()
-    for i in range(lenta, len(chiusure)):
+    for i in range(max(lenta, 200 if filtro_200 else 0), len(chiusure)):
         data = chiusure.index[i]
         prezzo = float(chiusure.iloc[i])
-        incrocio_su = bool(sopra.iloc[i]) and not bool(sopra.iloc[i - 1])
-        incrocio_giu = not bool(sopra.iloc[i]) and bool(sopra.iloc[i - 1])
+        incrocio_su = bool(seg["incrocio_su"].iloc[i]) and bool(seg["trend_ok"].iloc[i])
+        incrocio_giu = bool(seg["incrocio_giu"].iloc[i])
 
         if not ris.in_posizione:
             if incrocio_su:

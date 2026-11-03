@@ -14,8 +14,9 @@ COMMISSIONE = 0.001   # 0,1% per ogni acquisto o vendita (commissioni + spread, 
 TASSE = 0.26          # tassazione italiana sulle plusvalenze
 
 STRATEGIE = {
-    "Lenta (medie 20/50)": lambda c: applica_strategia(c, 20, 50),
-    "Veloce (medie 5/20)": lambda c: applica_strategia(c, 5, 20),
+    "Lenta (medie 20/50)": lambda c: applica_strategia(c, 20, 50, filtro_200=False),
+    "Veloce (medie 5/20)": lambda c: applica_strategia(c, 5, 20, filtro_200=False),
+    "Veloce + filtro 200": lambda c: applica_strategia(c, 5, 20, filtro_200=True),
     "RSI (compra i cali)": applica_rsi,
 }
 
