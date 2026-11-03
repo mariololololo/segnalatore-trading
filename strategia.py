@@ -84,3 +84,37 @@ def applica_strategia(chiusure: pd.Series,
             op.data_vendita, op.prezzo_vendita, op.motivo_vendita = data, prezzo, motivo
             ris.eventi[data] = f"VENDITA ({motivo})"
     return ris
+
+
+def calcola_rsi(chiusure: pd.Series, giorni: int = 14) -> pd.Series:
+    """RSI classico (Wilder): 0-100, sotto 30 = forte ribasso recente."""
+    delta = chiusure.diff()
+    su = delta.clip(lower=0).ewm(alpha=1 / giorni, min_periods=giorni).mean()
+    giu = (-delta.clip(upper=0)).ewm(alpha=1 / giorni, min_periods=giorni).mean()
+    return 100 - 100 / (1 + su / giu)
+
+
+def applica_rsi(chiusure: pd.Series, soglia_acquisto: float = 30,
+                soglia_vendita: float = 50, stop: float = STOP_LOSS) -> Risultato:
+    """Compra dopo un forte calo (RSI < 30), rivende al rimbalzo (RSI > 50) o allo stop."""
+    rsi = calcola_rsi(chiusure)
+    ris = Risultato()
+    for i in range(15, len(chiusure)):
+        data = chiusure.index[i]
+        prezzo = float(chiusure.iloc[i])
+        valore = float(rsi.iloc[i])
+        if not ris.in_posizione:
+            if valore < soglia_acquisto:
+                ris.operazioni.append(Operazione(data, prezzo))
+                ris.eventi[data] = "ACQUISTO"
+        else:
+            op = ris.operazioni[-1]
+            if prezzo <= op.prezzo_acquisto * (1 - stop):
+                motivo = "STOP-LOSS"
+            elif valore > soglia_vendita:
+                motivo = "RIMBALZO (RSI > 50)"
+            else:
+                continue
+            op.data_vendita, op.prezzo_vendita, op.motivo_vendita = data, prezzo, motivo
+            ris.eventi[data] = f"VENDITA ({motivo})"
+    return ris
