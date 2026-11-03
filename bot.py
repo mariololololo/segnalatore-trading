@@ -99,7 +99,7 @@ def costruisci_storico(api: Alpaca) -> tuple[list, list]:
     try:
         st = api.storico_capitale()
         for ts, eq in zip(st.get("timestamp") or [], st.get("equity") or []):
-            if eq is None:
+            if eq is None or float(eq) <= 0:   # giorni prima che il conto esistesse
                 continue
             ts = ts / 1000 if ts > 10**11 else ts      # secondi o millisecondi
             giorno = datetime.fromtimestamp(ts, timezone.utc).date().isoformat()
