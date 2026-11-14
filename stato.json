@@ -1,10 +1,10 @@
 {
-  "aggiornato": "2026-11-13T02:54:01+00:00",
+  "aggiornato": "2026-11-14T02:40:35+00:00",
   "ticker": "SPY",
-  "data": "2026-11-12",
-  "prezzo": 757.12,
-  "media_veloce": 750.97,
-  "media_lenta": 759.47,
+  "data": "2026-11-13",
+  "prezzo": 754.37,
+  "media_veloce": 754.78,
+  "media_lenta": 759.02,
   "giorni_veloce": 5,
   "giorni_lenta": 20,
   "filtro_200": false,
@@ -46,6 +46,10 @@
     },
     {
       "data": "2026-11-12",
+      "valore": 100000.0
+    },
+    {
+      "data": "2026-11-13",
       "valore": 100000.0
     }
   ],
